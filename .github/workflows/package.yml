@@ -14,6 +14,7 @@ jobs:
         run: |
           # Use the GitHub API to get the latest release version from zxing-cpp repository
           echo "${{ env.LATEST_VERSION }}" > latest_version.env
+          echo "Latest remote release version obtained."
         env:
           LATEST_VERSION: $(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
         if: ${{ success() }}
@@ -22,6 +23,7 @@ jobs:
         run: |
           # Use git describe to get the latest tagged version of the current repository
           echo "${{ env.CURRENT_VERSION }}" > current_version.env
+          echo "Current released version obtained."
         env:
           CURRENT_VERSION: $(git describe --tags --abbrev=0)
         if: ${{ success() }}
@@ -35,37 +37,47 @@ jobs:
           elif ! [[ "$(cat latest_version.env)" > "$(cat current_version.env)" ]]; then
             echo "Latest version is older than or equal to current version."
             exit 1
+          else
+            echo "Newer version found."
           fi
         if: ${{ success() }}
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Update submodule
-        run: |
-          git submodule init
-          git submodule update
+        with:
+          submodules: 'recursive'
+        # checkout complete
       - name: Build ZXingCpp
         run: ./build.sh
+        # build complete
       - name: Compute checksum
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
           swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}' > checksum
+          echo "Checksum computed."
         shell: bash
         if: ${{ success() }}
       - name: Update Package.swift
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
           sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1$(cat latest_version.env)\3$(cat checksum)\5/" Package.swift
+          echo "Package.swift updated."
         if: ${{ success() }}
       - name: Create new release and upload asset
-        uses: actions/upload-release-asset@v1
-        with:
-          # Use the GitHub API to upload the asset to the new release
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: .build/release/ZXingCpp.xcframework.zip
-          asset_name: ZXingCpp.xcframework.zip
-          asset_content_type: application/zip
-          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create a new GitHub release and save the release ID to a file
+          RELEASE_ID=$(curl --silent --data '{"tag_name": "$(cat latest_version.env)", "target_commitish": "$(git rev-parse HEAD)", "name": "$(cat latest_version.env)", "body": "Release $(cat latest_version.env)" }' --header "Authorization: Bearer ${GITHUB_TOKEN}" --header "Content-Type: application/json" https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.id')
+          echo "Created release with ID $RELEASE_ID"
+
+          # Upload the asset to the new release
+          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=ZXingCpp.xcframework.zip"
+          curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" --header "Content-Type: application/zip" --upload-file ".build/release/ZXingCpp.xcframework.zip" "$UPLOAD_URL"
+
+          # Output the URL of the uploaded asset
+          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/$(cat latest_version.env)/ZXingCpp.xcframework.zip"
+          echo "Uploaded asset to $ASSET_URL"
         if: ${{ success() }}
       - name: Commit Package.swift
         run: |
