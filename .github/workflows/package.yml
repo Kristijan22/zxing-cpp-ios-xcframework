@@ -30,12 +30,13 @@ jobs:
           if [ "$(cat latest_version.env)" \> "$(cat current_version.env)" ]; then
             echo "Newer version found: $(cat latest_version.env)"
             echo "update_needed=true" >> $GITHUB_OUTPUT
+            echo "Print ${{ steps.compare-versions.outputs.update_needed }}"
           else
             echo "Already up-to-date."
             echo "update_needed=false" >> $GITHUB_OUTPUT
           fi
       - name: Checkout
-        if: ${{ steps.compare-versions.update_needed == true }}
+        if: ${{ steps.compare-versions.outputs.update_needed == true }}
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
