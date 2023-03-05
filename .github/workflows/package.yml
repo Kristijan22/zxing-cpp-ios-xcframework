@@ -28,13 +28,18 @@ jobs:
         shell: bash
         continue-on-error: false
 
+      - name: Update submodule
+        run: |
+          git submodule init
+          git submodule update
+
       - name: Build
         run: ./build.sh
 
       - name: Compute checksum
         id: checksum
         run: |
-          swift package compute-checksum $GITHUB_WORKSPACE/ZXingCpp.xcframework.zip > checksum
+          swift package compute-checksum ZXingCpp.xcframework.zip > checksum
           echo "Checksum: $(cat checksum)"
         shell: bash
 
