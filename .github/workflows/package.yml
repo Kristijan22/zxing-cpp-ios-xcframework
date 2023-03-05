@@ -1,88 +1,65 @@
 name: Update ZXingCpp SPM package
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: '0 0 * * *' # Runs every day at midnight UTC
 
 jobs:
-  update:
+  check-version-and-build:
     runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Get latest release
-        id: get_latest_release
+      - name: Get latest remote release version
+        id: latest-version
         run: |
-          curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name' > latest_version
-          echo "Latest release version: $(cat latest_version)"
-        shell: bash
-
-      - name: Check if latest release
+          # Use the GitHub API to get the latest release version from zxing-cpp repository
+          echo "::set-output name=version::$(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')"
+      - name: Get current released version
+        id: current-version
         run: |
-          if [ "$(cat latest_version)" = "$(cat current_version)" ]; then
-            echo "Already at the latest version."
+          # Use git describe to get the latest tagged version of the current repository
+          echo "::set-output name=version::$(git describe --tags --abbrev=0)"
+      - name: Compare versions
+        id: compare-versions
+        run: |
+          # Compare the latest remote release version to the current released version
+          if [[ "${{ steps.latest-version.outputs.version }}" == "${{ steps.current-version.outputs.version }}" ]]; then
+            echo "Current version is up-to-date."
+            exit 1
+          elif ! [[ "${{ steps.latest-version.outputs.version }}" > "${{ steps.current-version.outputs.version }}" ]]; then
+            echo "Latest version is older than or equal to current version."
             exit 1
           fi
-        shell: bash
-        continue-on-error: false
-
-      - name: Update submodule
+      - name: Checkout latest commit and update submodules
         run: |
-          git submodule init
-          git submodule update
-
-      - name: Build
+          # Checkout the latest commit of the current repository and update submodules
+          git checkout master
+          git pull
+          git submodule update --init --recursive
+      - name: Build ZXingCpp
         run: ./build.sh
-
       - name: Compute checksum
         id: checksum
         run: |
-          swift package compute-checksum ZXingCpp.xcframework.zip > checksum
-          echo "Checksum: $(cat checksum)"
+          # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
+          cd .build/release
+          swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}' > checksum
         shell: bash
-
       - name: Update Package.swift
         run: |
-          sed -i '' -e "s/checksum:.*/checksum: \"$(cat checksum)\"/" Package.swift
-          sed -i '' -e "s/\\/zxing-cpp-ios-xcframework\\/releases\\/download\\/.*\\//\\/zxing-cpp-ios-xcframework\\/releases\\/download\\/$1\\//" Package.swift
-        shell: bash
-        env:
-          1: ${{ steps.get_latest_release.outputs.tag_name }}
-
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_latest_release.outputs.tag_name }}
-          release_name: ${{ steps.get_latest_release.outputs.tag_name }}
-          body: ${{ steps.get_latest_release.outputs.body }}
-          draft: false
-          prerelease: false
-        continue-on-error: false
-
-      - name: Upload asset
+          # Replace the version and checksum in Package.swift with the latest remote release version and checksum
+          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1${{ steps.latest-version.outputs.version }}\3$(cat .build/release/checksum)\5/" Package.swift
+      - name: Create new release and upload asset
         uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ZXingCpp.xcframework.zip
+          # Use the GitHub API to upload the asset to the new release
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: .build/release/ZXingCpp.xcframework.zip
           asset_name: ZXingCpp.xcframework.zip
           asset_content_type: application/zip
-
-      - name: Commit changes
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit Package.swift
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          # Commit the updated Package.swift file
           git add Package.swift
-          git commit -m "Update Package.swift"
+          git commit -m "Bump version to ${{ steps.latest-version.outputs.version }}"
           git push
-        env:
-          GIT_COMMITTER_NAME: GitHub Action
-          GIT_COMMITTER_EMAIL: action@github.com
-          GIT_AUTHOR_NAME: GitHub Action
-          GIT_AUTHOR_EMAIL: action@github.com
