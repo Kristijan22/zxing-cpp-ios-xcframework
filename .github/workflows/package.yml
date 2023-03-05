@@ -16,6 +16,7 @@ jobs:
           echo "${{ env.LATEST_VERSION }}" > latest_version.env
         env:
           LATEST_VERSION: $(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
+        if: ${{ success() }}
       - name: Get current released version
         id: current-version
         run: |
@@ -23,6 +24,7 @@ jobs:
           echo "${{ env.CURRENT_VERSION }}" > current_version.env
         env:
           CURRENT_VERSION: $(git describe --tags --abbrev=0)
+        if: ${{ success() }}
       - name: Compare versions
         id: compare-versions
         run: |
@@ -34,6 +36,7 @@ jobs:
             echo "Latest version is older than or equal to current version."
             exit 1
           fi
+        if: ${{ success() }}
       - name: Checkout
         uses: actions/checkout@v2
       - name: Update submodule
@@ -46,13 +49,14 @@ jobs:
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
-          cd .build/release
           swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}' > checksum
         shell: bash
+        if: ${{ success() }}
       - name: Update Package.swift
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1$(cat latest_version.env)\3$(cat .build/release/checksum)\5/" Package.swift
+          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1$(cat latest_version.env)\3$(cat checksum)\5/" Package.swift
+        if: ${{ success() }}
       - name: Create new release and upload asset
         uses: actions/upload-release-asset@v1
         with:
@@ -62,6 +66,7 @@ jobs:
           asset_name: ZXingCpp.xcframework.zip
           asset_content_type: application/zip
           token: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ success() }}
       - name: Commit Package.swift
         run: |
           # Commit the updated Package.swift file
