@@ -22,7 +22,7 @@ jobs:
           echo "${{ env.CURRENT_VERSION }}" > current_version.env
           echo "Current version: $(cat current_version.env)"
         env:
-          CURRENT_VERSION: $(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework//releases/latest | jq -r '.tag_name')
+          CURRENT_VERSION: $(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
       - name: Compare versions
         id: compare-versions
         run: |
@@ -34,8 +34,8 @@ jobs:
             echo "Already up-to-date."
             echo "update_needed=false" >> $GITHUB_OUTPUT
           fi
-        if: ${{ steps.compare-versions.update_needed == 'true' }}
       - name: Checkout
+        if: ${{ steps.compare-versions.update_needed == 'true' }}
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
