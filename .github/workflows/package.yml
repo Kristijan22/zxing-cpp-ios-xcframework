@@ -12,32 +12,29 @@ jobs:
       - name: Get latest remote release version
         id: latest-version
         run: |
-          # Use the GitHub API to get the latest release version from zxing-cpp repository
           echo "${{ env.LATEST_VERSION }}" > latest_version.env
-          echo "Latest remote release version obtained: ${{ env.LATEST_VERSION }}"
+          echo "Latest remote release version obtained: $(cat latest_version.env)"
         env:
           LATEST_VERSION: $(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
-        if: ${{ success() }}
       - name: Get current released version
         id: current-version
         run: |
-          # Use git describe to get the latest tagged version of the current repository
           echo "${{ env.CURRENT_VERSION }}" > current_version.env
-          echo "Current released version obtained: ${{ env.CURRENT_VERSION }}"
+          echo "Current version: $(cat current_version.env)"
         env:
-          CURRENT_VERSION: $(git describe --tags --abbrev=0)
-        if: ${{ success() }}
+          CURRENT_VERSION: $(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework//releases/latest | jq -r '.tag_name')
       - name: Compare versions
         id: compare-versions
         run: |
           # Compare the latest remote release version to the current released version
-          if [ "$(cat latest_version.env)" \>= "$(cat current_version.env)" ]; then
+          if [ "$(cat latest_version.env)" \> "$(cat current_version.env)" ]; then
             echo "Newer version found: $(cat latest_version.env)"
+            echo "update_needed=true" >> $GITHUB_OUTPUT
           else
             echo "Already up-to-date."
-            exit 1
+            echo "update_needed=false" >> $GITHUB_OUTPUT
           fi
-        if: ${{ success() }}
+        if: ${{ steps.compare-versions.update_needed == 'true' }}
       - name: Checkout
         uses: actions/checkout@v2
         with:
