@@ -34,7 +34,7 @@ jobs:
       - name: Compute checksum
         id: checksum
         run: |
-          swift package compute-checksum ZXingCpp.xcframework.zip > checksum
+          swift package compute-checksum $GITHUB_WORKSPACE/ZXingCpp.xcframework.zip > checksum
           echo "Checksum: $(cat checksum)"
         shell: bash
 
