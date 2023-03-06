@@ -36,7 +36,7 @@ jobs:
           fi
       - name: Checkout
         if: ${{ env.update_needed == true }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: 'recursive'
       - name: Build ZXingCpp
@@ -50,7 +50,6 @@ jobs:
           swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}' > checksum
           echo "Checksum computed."
         shell: bash
-        if: ${{ success() }}
       - name: Update Package.swift
         if: ${{ env.update_needed == true }}
         run: |
