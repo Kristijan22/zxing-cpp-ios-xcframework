@@ -44,15 +44,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-#      - name: Build ZXingCpp
-#        if: ${{ env.update_needed == 'true' }}
-#        run: ./build.sh
+      - name: Build ZXingCpp
+        if: ${{ env.update_needed == 'true' }}
+        run: ./build.sh
       - name: Compute checksum
         if: ${{ env.update_needed == 'true' }}
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
-          echo "checksum=chck" >> $GITHUB_ENV
+          echo "checksum=${{ env.CHECKSUM }}" >> $GITHUB_ENV
           echo "Checksum computed."
         shell: bash
         env:
@@ -61,26 +61,19 @@ jobs:
         if: ${{ env.update_needed == 'true' }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          sed -i '' "s/\(url: \)\?\(.*\)v[0-9]\+\.[0-9]\+\.[0-9]\+/\1${{ env.latest_version }}/g" Package.swift
+          awk '{gsub(/v[0-9]+\.[0-9]+\.[0-9]+/, "{{ env.latest_version }}")}1' Package.swift > temp && mv temp Package.swift
           sed -i '' "s/checksum: \".*\"/checksum: \"${{ env.checksum }}\"/" Package.swift
           echo "Package.swift updated."
-#        if: ${{ success() }}
-#      - name: Create new release and upload asset
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          # Create a new GitHub release and save the release ID to a file
-#          RELEASE_ID=$(curl --silent --data '{"tag_name": "$(cat latest_version.env)", "target_commitish": "$(git rev-parse HEAD)", "name": "$(cat latest_version.env)", "body": "Release $(cat latest_version.env)" }' --header "Authorization: Bearer ${GITHUB_TOKEN}" --header "Content-Type: application/json" https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.id')
-#          echo "Created release with ID $RELEASE_ID"
-#
-#          # Upload the asset to the new release
-#          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=ZXingCpp.xcframework.zip"
-#          curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" --header "Content-Type: application/zip" --upload-file ".build/release/ZXingCpp.xcframework.zip" "$UPLOAD_URL"
-#
-#          # Output the URL of the uploaded asset
-#          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/$(cat latest_version.env)/ZXingCpp.xcframework.zip"
-#          echo "Uploaded asset to $ASSET_URL"
-#        if: ${{ success() }}
+      - name: Push tag
+        if: ${{ env.update_needed == 'true' }}
+        uses: actions-ecosystem/action-push-tag@v1
+        with:
+          tag: ${{ env.latest_release }}
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v') && ${{ env.update_needed == 'true' }}
+        with:
+          files: ZXingCpp.xcframework.zip
       - name: Commit Package.swift
         if: ${{ env.update_needed == 'true' }}
         run: |
