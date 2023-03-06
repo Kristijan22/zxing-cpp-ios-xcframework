@@ -9,42 +9,41 @@ jobs:
   check-version-and-build:
     runs-on: macos-latest
     steps:
-      - name: Get latest remote release version
+      - name: Get latest ZXingCpp version
         id: latest-version
         run: |
-          echo "${{ env.LATEST_VERSION }}" > latest_version.env
-          echo "Latest remote release version obtained: $(cat latest_version.env)"
+          echo "latest_version=${{ env.LATEST_VERSION }}" >> $GITHUB_ENV
+          echo "Latest version: ${{ env.LATEST_VERSION }}"
         env:
           LATEST_VERSION: $(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
-      - name: Get current released version
+      - name: Get current XCFramework version
         id: current-version
         run: |
-          echo "${{ env.CURRENT_VERSION }}" > current_version.env
-          echo "Current version: $(cat current_version.env)"
+          echo "current_version=${{ env.CURRENT_VERSION }}" >> $GITHUB_ENV
+          echo "Current version: ${{ env.CURRENT_VERSION }}"
         env:
           CURRENT_VERSION: $(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
       - name: Compare versions
         id: compare-versions
         run: |
           # Compare the latest remote release version to the current released version
-          if [ "$(cat latest_version.env)" \> "$(cat current_version.env)" ]; then
-            echo "Newer version found: $(cat latest_version.env)"
-            echo "update_needed=true" >> $GITHUB_OUTPUT
-            echo "Print ${{ steps.compare-versions.outputs.update_needed }}"
+          if [ "${{ env.latest_version }}" \> "${{ env.current_version }}" ]; then
+            echo "Newer version found: ${{ env.latest_version }}"
+            echo "update_needed=true" >> $GITHUB_ENV
           else
             echo "Already up-to-date."
-            echo "update_needed=false" >> $GITHUB_OUTPUT
+            echo "update_needed=false" >> $GITHUB_ENV
           fi
       - name: Checkout
-        if: ${{ steps.compare-versions.outputs.update_needed == true }}
+        if: ${{ env.update_needed == true }}
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
-        # checkout complete
       - name: Build ZXingCpp
+        if: ${{ env.update_needed == true }}
         run: ./build.sh
-        # build complete
       - name: Compute checksum
+        if: ${{ env.update_needed == true }}
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
@@ -53,6 +52,7 @@ jobs:
         shell: bash
         if: ${{ success() }}
       - name: Update Package.swift
+        if: ${{ env.update_needed == true }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
           sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1$(cat latest_version.env)\3$(cat checksum)\5/" Package.swift
@@ -74,9 +74,10 @@ jobs:
 #          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/$(cat latest_version.env)/ZXingCpp.xcframework.zip"
 #          echo "Uploaded asset to $ASSET_URL"
 #        if: ${{ success() }}
-#      - name: Commit Package.swift
-#        run: |
-#          # Commit the updated Package.swift file
-#          git add Package.swift
-#          git commit -m "Bump version to $(cat latest_version.env)"
-#          git push
+      - name: Commit Package.swift
+        if: ${{ env.update_needed == true }}
+        run: |
+          # Commit the updated Package.swift file
+          git add Package.swift
+          git commit -m "Bump version to ${{ env.latest_version }}"
+          git push
