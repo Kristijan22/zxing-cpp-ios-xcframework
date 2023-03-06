@@ -62,7 +62,7 @@ jobs:
         if: ${{ env.update_needed == 'true' }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          awk '{gsub(/v[0-9]+\.[0-9]+\.[0-9]+/, "{{ env.latest_version }}")}1' Package.swift > temp && mv temp Package.swift
+          awk '{gsub(/v[0-9]+\.[0-9]+\.[0-9]+/, "${{ env.latest_version }}")}1' Package.swift > temp && mv temp Package.swift
           sed -i '' "s/checksum: \".*\"/checksum: \"${{ env.checksum }}\"/" Package.swift
           echo "Package.swift updated."
       - name: Commit Package.swift
