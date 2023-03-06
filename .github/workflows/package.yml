@@ -64,15 +64,12 @@ jobs:
           awk '{gsub(/v[0-9]+\.[0-9]+\.[0-9]+/, "{{ env.latest_version }}")}1' Package.swift > temp && mv temp Package.swift
           sed -i '' "s/checksum: \".*\"/checksum: \"${{ env.checksum }}\"/" Package.swift
           echo "Package.swift updated."
-      - name: Push tag
-        if: ${{ env.update_needed == 'true' }}
-        uses: actions-ecosystem/action-push-tag@v1
-        with:
-          tag: ${{ env.latest_release }}
       - name: Create release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v') && ${{ env.update_needed == 'true' }}
+        if: ${{ env.update_needed == 'true' }}
         with:
+          name: ${{ env.latest_version }}
+          body: "Updating SPM package for ${{ env.latest_version }}"
           files: ZXingCpp.xcframework.zip
       - name: Commit Package.swift
         if: ${{ env.update_needed == 'true' }}
