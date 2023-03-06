@@ -39,15 +39,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-      - name: Build ZXingCpp
-        if: ${{ env.update_needed == 'true' }}
-        run: ./build.sh
+#      - name: Build ZXingCpp
+#        if: ${{ env.update_needed == 'true' }}
+#        run: ./build.sh
       - name: Compute checksum
         if: ${{ env.update_needed == 'true' }}
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
-          echo "checksum=${{ env.CHECKSUM }}" >> $GITHUB_ENV
+          echo "checksum=chck" >> $GITHUB_ENV
           echo "Checksum computed."
         shell: bash
         env:
@@ -56,7 +56,8 @@ jobs:
         if: ${{ env.update_needed == 'true' }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1${{ env.latest_version }}\3${{ env.checksum }}\5/" Package.swift
+          sed -i '' "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ env.latest_version }}/g" Package.swift
+          sed -i '' "s/checksum: \".*\"/checksum: \"${{ env.checksum }}\"/" Package.swift
           echo "Package.swift updated."
 #        if: ${{ success() }}
 #      - name: Create new release and upload asset
