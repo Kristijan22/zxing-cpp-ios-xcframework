@@ -11,19 +11,23 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Get latest ZXingCpp version
-        id: latest-version
         run: |
-          echo "latest_version=${{ env.LATEST_VERSION }}" >> $GITHUB_ENV
-          echo "Latest version: ${{ env.LATEST_VERSION }}"
-        env:
-          LATEST_VERSION: $(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Failed to retrieve latest version"
+            exit 1
+          fi
+          echo "Latest version: $LATEST_VERSION"
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_ENV
       - name: Get current XCFramework version
-        id: current-version
         run: |
-          echo "current_version=${{ env.CURRENT_VERSION }}" >> $GITHUB_ENV
-          echo "Current version: ${{ env.CURRENT_VERSION }}"
-        env:
-          CURRENT_VERSION: $(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
+          CURRENT_VERSION=$(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Failed to retrieve current version"
+            exit 1
+          fi
+          echo "Current version: $CURRENT_VERSION"
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_ENV
       - name: Compare versions
         id: compare-versions
         run: |
