@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # Runs every day at midnight UTC
-
+permissions: write-all
 jobs:
   check-version-and-build:
     runs-on: macos-latest
