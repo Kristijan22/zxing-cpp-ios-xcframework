@@ -61,7 +61,7 @@ jobs:
         if: ${{ env.update_needed == 'true' }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          sed -i '' "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ env.latest_version }}/g" Package.swift
+          sed -i '' "s/\(url: \)\?\(.*\)v[0-9]\+\.[0-9]\+\.[0-9]\+/\1${{ env.latest_version }}/g" Package.swift
           sed -i '' "s/checksum: \".*\"/checksum: \"${{ env.checksum }}\"/" Package.swift
           echo "Package.swift updated."
 #        if: ${{ success() }}
