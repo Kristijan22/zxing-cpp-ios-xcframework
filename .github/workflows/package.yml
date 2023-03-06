@@ -26,8 +26,8 @@ jobs:
       - name: Compare versions
         id: compare-versions
         run: |
-          # Check if latest_version is not null
-          if [ -z "${{ env.latest_version }}" ]; then
+          # Check if latest_version is null
+          if [ ${{ env.latest_version }} == 'null' ]; then
             echo "Latest version not found."
             exit 1
           fi
