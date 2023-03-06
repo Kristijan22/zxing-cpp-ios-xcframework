@@ -47,14 +47,16 @@ jobs:
         id: checksum
         run: |
           # Compute the SHA-256 checksum of the ZXingCpp.xcframework.zip
-          swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}' > checksum
+          echo "checksum=${{ env.CHECKSUM }}" >> $GITHUB_ENV
           echo "Checksum computed."
         shell: bash
+        env:
+          CHECKSUM: $(swift package compute-checksum ZXingCpp.xcframework.zip | awk '{print $1}')
       - name: Update Package.swift
         if: ${{ env.update_needed == 'true' }}
         run: |
           # Replace the version and checksum in Package.swift with the latest remote release version and checksum
-          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1$(cat latest_version.env)\3$(cat checksum)\5/" Package.swift
+          sed -i '' "s/\(url: \"https:\/\/github\.com\/zxing-cpp\/zxing-cpp\/archive\/\)\(.*\)\(.zip\", checksum: \"\)\(.*\)\(\".*\)/\1${{ env.latest_version }}\3${{ env.checksum }}\5/" Package.swift
           echo "Package.swift updated."
 #        if: ${{ success() }}
 #      - name: Create new release and upload asset
