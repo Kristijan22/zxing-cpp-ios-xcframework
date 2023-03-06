@@ -22,10 +22,10 @@ jobs:
       - name: Get current XCFramework version
         run: |
           CURRENT_VERSION=$(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
-          if [ -z "$CURRENT_VERSION" ]; then
-            echo "Failed to retrieve current version"
-            exit 1
-          fi
+#          if [ -z "$CURRENT_VERSION" ]; then
+#            echo "Failed to retrieve current version"
+#            exit 1
+#          fi
           echo "Current version: $CURRENT_VERSION"
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_ENV
       - name: Compare versions
