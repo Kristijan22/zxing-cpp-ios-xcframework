@@ -12,8 +12,8 @@ jobs:
     steps:
       - name: Get latest ZXingCpp version
         run: |
-          LATEST_VERSION=$(curl -s https://api.github.com/repos/zxing-cpp/zxing-cpp/releases/latest | jq -r '.tag_name')
-          if [ -z "$LATEST_VERSION" ]; then
+          LATEST_VERSION=$(curl -s "https://api.github.com/repos/zxing-cpp/zxing-cpp/tags" | jq -r 'map(.name) | sort_by( .[1:] | split(".") | map(tonumber) ) | last')
+          if [ "$LATEST_VERSION" == 'null' ]; then
             echo "Failed to retrieve latest version"
             exit 1
           fi
@@ -21,17 +21,16 @@ jobs:
           echo "latest_version=$LATEST_VERSION" >> $GITHUB_ENV
       - name: Get current XCFramework version
         run: |
-          CURRENT_VERSION=$(curl -s https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/latest | jq -r '.tag_name')
+          CURRENT_VERSION=$(curl -s "https://api.github.com/repos/Kristijan22/zxing-cpp-ios-xcframework/tags" | jq -r 'map(.name) | sort_by( .[1:] | split(".") | map(tonumber) ) | last')
+          if [ "$CURRENT_VERSION" == 'null' ]; then
+            echo "Failed to retrieve current version"
+            exit 1
+          fi
           echo "Current version: $CURRENT_VERSION"
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_ENV
       - name: Compare versions
         id: compare-versions
         run: |
-          # Check if latest_version is null
-          if [ ${{ env.latest_version }} == 'null' ]; then
-            echo "Latest version not found."
-            exit 1
-          fi
           # Compare the latest remote release version to the current released version
           if [ "${{ env.latest_version }}" \> "${{ env.current_version }}" ]; then
             echo "Newer version found: ${{ env.latest_version }}"
