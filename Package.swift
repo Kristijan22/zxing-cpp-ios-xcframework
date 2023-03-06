@@ -16,7 +16,7 @@ let package = Package(
         .binaryTarget(
             name: "ZXingCpp",
             url: "https://github.com/Kristijan22/zxing-cpp-ios-xcframework/releases/download/0.0.0/ZXingCpp.xcframework.zip",
-            checksum: "000"
+            checksum: "chck"
         ),
         .target(
             name: "ZXingCppWrapper",
